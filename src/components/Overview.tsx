@@ -1,16 +1,12 @@
 import { useEffect, useRef } from 'react';
 import Chart from 'chart.js/auto';
 import { SEASONS } from '../lib/espn';
-import { ordinal, pct } from '../lib/process';
+import { ordinal, pct, teamName } from '../lib/process';
 import type { ESPNLeague, ProcessedData } from '../lib/types';
 
 interface Props {
   leagueData: Record<number, ESPNLeague>;
   processed: ProcessedData;
-}
-
-function teamName(t: { location?: string; nickname?: string }): string {
-  return `${t.location ?? ''} ${t.nickname ?? ''}`.trim();
 }
 
 export default function Overview({ leagueData, processed }: Props) {
@@ -106,7 +102,7 @@ export default function Overview({ leagueData, processed }: Props) {
             <div key={y} className="trophy-card">
               <div className="trophy-year">{y}</div>
               <div style={{ fontSize: '1.2rem' }}>🏆</div>
-              <div className="trophy-name">{teamName(champ)}</div>
+              <div className="trophy-name">{teamName(champ, champ.id)}</div>
               <div className="trophy-record">
                 {r.wins ?? 0}-{r.losses ?? 0}
                 {r.ties ? `-${r.ties}` : ''}

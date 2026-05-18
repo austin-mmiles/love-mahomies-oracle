@@ -3,6 +3,8 @@
 
 export interface ESPNTeam {
   id: number;
+  name?: string;
+  abbrev?: string;
   location?: string;
   nickname?: string;
   owners?: string[];

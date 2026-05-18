@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 const LEAGUE_ID = 97124817;
-const BASE = 'https://fantasy.espn.com/apis/v3/games/ffl/seasons';
+const BASE = 'https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons';
 const VIEWS = [
   'mTeam',
   'mSettings',

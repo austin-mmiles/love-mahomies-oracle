@@ -1,8 +1,16 @@
 import type { ESPNLeague, ManagerStats, Matchup, ProcessedData } from './types';
 
-function teamName(team: { location?: string; nickname?: string } | undefined, id: number): string {
+export function teamName(
+  team: { name?: string; location?: string; nickname?: string } | undefined,
+  id: number,
+): string {
   if (!team) return `Team ${id}`;
-  return `${team.location ?? ''} ${team.nickname ?? ''}`.trim() || `Team ${id}`;
+  // Newer ESPN payloads use `name`; older ones used `location` + `nickname`.
+  return (
+    team.name?.trim() ||
+    `${team.location ?? ''} ${team.nickname ?? ''}`.trim() ||
+    `Team ${id}`
+  );
 }
 
 export function processAllData(leagueData: Record<number, ESPNLeague>): ProcessedData {

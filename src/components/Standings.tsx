@@ -1,15 +1,11 @@
 import { useState } from 'react';
 import { SEASONS } from '../lib/espn';
-import { pct } from '../lib/process';
+import { pct, teamName } from '../lib/process';
 import type { ESPNLeague, ProcessedData } from '../lib/types';
 
 interface Props {
   leagueData: Record<number, ESPNLeague>;
   processed: ProcessedData;
-}
-
-function teamName(t: { location?: string; nickname?: string }): string {
-  return `${t.location ?? ''} ${t.nickname ?? ''}`.trim();
 }
 
 export default function Standings({ leagueData, processed }: Props) {
@@ -23,7 +19,7 @@ export default function Standings({ leagueData, processed }: Props) {
     .map((t) => {
       const r = t.record?.overall ?? {};
       return {
-        name: teamName(t),
+        name: teamName(t, t.id),
         w: r.wins ?? 0,
         l: r.losses ?? 0,
         ti: r.ties ?? 0,

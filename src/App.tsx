@@ -108,5 +108,3 @@ export default function App() {
     </>
   );
 }
-
-export { SEASONS };

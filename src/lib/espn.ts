@@ -42,7 +42,9 @@ export async function fetchSeason(year: number, force = false): Promise<ESPNLeag
     const cached = readCache(year);
     if (cached) return cached;
   }
-  // Hit our proxy so we can centralize headers + caching + future-proofing.
+  // Both dev and prod hit /api/espn/:year. In dev, Vite's proxy rewrites it to
+  // ESPN's public read endpoint (see vite.config.ts). In prod, Vercel routes it
+  // to api/espn/[year].ts which adds edge caching + optional cookie auth.
   const res = await fetch(`/api/espn/${year}`);
   if (!res.ok) throw new Error(`Failed to fetch ${year}: HTTP ${res.status}`);
   const data: ESPNLeague = await res.json();

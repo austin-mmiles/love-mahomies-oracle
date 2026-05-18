@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { SEASONS } from '../lib/espn';
+import { teamName } from '../lib/process';
 import type { ESPNLeague } from '../lib/types';
 
 interface Props {
@@ -17,11 +18,6 @@ interface WeeklyPerf {
 }
 
 const BENCH_SLOTS = new Set([20, 21]); // 20=bench, 21=IR (ESPN slot IDs)
-
-function teamName(t: { location?: string; nickname?: string } | undefined, id: number): string {
-  if (!t) return `Team ${id}`;
-  return `${t.location ?? ''} ${t.nickname ?? ''}`.trim() || `Team ${id}`;
-}
 
 function extractPerformances(leagueData: Record<number, ESPNLeague>): WeeklyPerf[] {
   const perfs: WeeklyPerf[] = [];

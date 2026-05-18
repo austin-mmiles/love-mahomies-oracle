@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { SEASONS } from '../lib/espn';
-import { pct } from '../lib/process';
+import { pct, teamName } from '../lib/process';
 import type { ESPNLeague, ProcessedData } from '../lib/types';
 
 interface Props {
@@ -24,10 +24,6 @@ const SUGGESTIONS = [
   'Who improves most year over year?',
 ];
 
-function teamName(t: { location?: string; nickname?: string }): string {
-  return `${t.location ?? ''} ${t.nickname ?? ''}`.trim();
-}
-
 function buildSystemPrompt(leagueData: Record<number, ESPNLeague>, processed: ProcessedData): string {
   const managers = Object.values(processed.managers);
   const avail = SEASONS.filter((y) => leagueData[y]);
@@ -38,7 +34,7 @@ function buildSystemPrompt(leagueData: Record<number, ESPNLeague>, processed: Pr
       const c = [...teams].sort(
         (a, b) => (a.rankCalculatedFinal ?? 99) - (b.rankCalculatedFinal ?? 99),
       )[0];
-      return c ? `${y}: ${teamName(c)}` : null;
+      return c ? `${y}: ${teamName(c, c.id)}` : null;
     })
     .filter(Boolean)
     .join(', ');
