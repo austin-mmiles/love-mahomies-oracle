@@ -1,0 +1,62 @@
+name: Build and deploy to GitHub Pages
+
+on:
+  push:
+    branches: [master, main]
+  workflow_dispatch:
+  # Re-run nightly during football season (Aug-Feb) at 10:00 UTC to pick up
+  # weekly results. Cheap, all data is cached.
+  schedule:
+    - cron: '0 10 * 8-12,1,2 *'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Fetch latest ESPN data
+        env:
+          ESPN_SWID: ${{ secrets.ESPN_SWID }}
+          ESPN_S2: ${{ secrets.ESPN_S2 }}
+        run: npm run fetch-data
+
+      - name: Build site
+        env:
+          # Repo is hosted at https://USER.github.io/REPO/ so we need the
+          # subpath as the Vite base. Strip the owner from the repo name.
+          BASE_PATH: /${{ github.event.repository.name }}/
+        run: npm run build
+
+      - name: Add .nojekyll (so files under _* aren't stripped)
+        run: touch dist/.nojekyll
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

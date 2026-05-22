@@ -9,7 +9,6 @@ import Standings from './components/Standings';
 import Matchups from './components/Matchups';
 import H2H from './components/H2H';
 import Players from './components/Players';
-import Chat from './components/Chat';
 import ManagerDetail from './components/ManagerDetail';
 
 const TABS: { id: TabId; label: string }[] = [
@@ -19,7 +18,6 @@ const TABS: { id: TabId; label: string }[] = [
   { id: 'matchups', label: 'Matchups' },
   { id: 'h2h', label: 'H2H' },
   { id: 'players', label: 'Players' },
-  { id: 'chat', label: 'AI Chat' },
 ];
 
 export default function App() {
@@ -113,7 +111,6 @@ export default function App() {
         {activeTab === 'matchups' && <Matchups leagueData={leagueData} processed={processed} />}
         {activeTab === 'h2h' && <H2H processed={processed} />}
         {activeTab === 'players' && <Players leagueData={leagueData} processed={processed} />}
-        {activeTab === 'chat' && <Chat leagueData={leagueData} processed={processed} />}
       </div>
     </NavContext.Provider>
   );

@@ -1,47 +1,49 @@
-# Gridiron Oracle
+# Love Mahomies Oracle
 
 A fantasy football dashboard for ESPN league `#97124817` (seasons 2020–2025).
 
-Stack: **Vite + React + TypeScript** frontend, **Vercel serverless functions** for the ESPN proxy and Claude chat.
+Static site — built with Vite + React + TypeScript, deployed to **GitHub Pages**. ESPN data is fetched into JSON snapshots on a nightly schedule via GitHub Actions, so the site loads instantly and has no runtime backend.
 
 ## Local development
 
 ```bash
 npm install
-cp .env.example .env.local   # fill in ANTHROPIC_API_KEY
-vercel dev                   # runs API routes on :3000
-npm run dev                  # runs Vite on :5173 (proxies /api → :3000)
+cp .env.example .env.local   # fill in ESPN_SWID + ESPN_S2 if you want current-year data
+npm run fetch-data           # writes public/data/*.json
+npm run dev                  # http://localhost:5173
 ```
 
-If you don't have the Vercel CLI installed: `npm i -g vercel`.
+The data fetch takes ~30s the first time (pulls every season + every week). Re-run `fetch-data` whenever you want fresh stats locally.
 
-## Deploy
+## Deploy (GitHub Pages)
 
-```bash
-vercel              # first time — links the project
-vercel --prod       # deploy to production
-```
+Already wired. Any push to `master`/`main` triggers `.github/workflows/deploy.yml` which:
 
-Then in the Vercel dashboard, set:
-- `ANTHROPIC_API_KEY` (required for the AI chat tab)
-- `ESPN_SWID` / `ESPN_S2` (only if the league becomes private)
+1. Runs `npm run fetch-data` using `ESPN_SWID` + `ESPN_S2` from repo secrets
+2. Builds the site with the correct base path
+3. Publishes to GitHub Pages
+
+**First-time setup (one-off):**
+
+1. **Repo Settings → Pages** → Source: **GitHub Actions**
+2. **Repo Settings → Secrets and variables → Actions** → add:
+   - `ESPN_SWID` (with curly braces)
+   - `ESPN_S2`
+3. Push to `master` → workflow runs → site goes live at `https://USER.github.io/love-mahomies-oracle/`
+
+The workflow also runs **nightly** (Aug–Feb, 10:00 UTC) so weekly results show up the morning after games.
 
 ## Project layout
 
 ```
-api/
-  espn/[year].ts   # ESPN proxy (CORS + edge caching)
-  chat.ts          # Claude proxy (hides API key)
-src/
-  lib/             # data layer (fetch + cache + processing)
-  components/      # one file per tab
-  App.tsx          # shell + tab routing + load screen
+.github/workflows/deploy.yml  # build + deploy
+scripts/fetch-espn.mjs        # ESPN snapshot generator
+public/data/                  # generated; gitignored
+src/lib/                      # data layer
+src/components/               # one file per tab
+src/App.tsx                   # shell + tab routing
 ```
 
 ## Cache
 
-ESPN season payloads are cached in `localStorage` with a 24h TTL. To force a refresh:
-```js
-localStorage.clear()
-```
-The serverless proxy also sets `Cache-Control: s-maxage=3600, stale-while-revalidate=86400` so the Vercel edge cache absorbs most traffic.
+Snapshots are also cached in `localStorage` with a 24h TTL for instant repeat visits. Force a refresh with `localStorage.clear()` in DevTools.

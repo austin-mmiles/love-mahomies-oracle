@@ -6,8 +6,7 @@ export type TabId =
   | 'standings'
   | 'matchups'
   | 'h2h'
-  | 'players'
-  | 'chat';
+  | 'players';
 
 export type View =
   | { kind: 'tab'; id: TabId }
