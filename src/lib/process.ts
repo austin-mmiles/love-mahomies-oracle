@@ -27,6 +27,18 @@ function ownerName(member: ESPNMember | undefined, ownerId: string): string {
 
 const UNCLAIMED = '__unclaimed__';
 
+// When the same human registers multiple ESPN accounts over the years, map
+// the older account(s) to their current/canonical one so stats merge.
+// Key = old SWID, value = canonical SWID. Add new entries as you find them.
+const OWNER_ALIASES: Record<string, string> = {
+  // Bradley Heckman — used 07F89356 in 2020, switched to D0FECDB3 from 2021+
+  '{07F89356-7A88-4D0C-B893-567A889D0CA4}': '{D0FECDB3-D42D-4AB1-A728-654B6CC65DBF}',
+};
+
+function canonical(ownerId: string): string {
+  return OWNER_ALIASES[ownerId] ?? ownerId;
+}
+
 export function processAllData(leagueData: Record<number, ESPNLeague>): ProcessedData {
   const matchups: Matchup[] = [];
   const managers: Record<string, ManagerStats> = {};
@@ -96,9 +108,13 @@ export function processAllData(leagueData: Record<number, ESPNLeague>): Processe
     for (const t of teams) {
       const tn = teamName(t, t.id);
       teamNameByTeamId.set(t.id, tn);
-      const ownerId = t.owners?.[0] ?? `${UNCLAIMED}-${year}-${t.id}`;
+      const rawOwnerId = t.owners?.[0] ?? `${UNCLAIMED}-${year}-${t.id}`;
+      const ownerId = canonical(rawOwnerId);
       ownerByTeamId.set(t.id, ownerId);
-      const name = ownerName(memberById.get(ownerId), ownerId);
+      // Resolve display name from THIS season's members first (so an alias
+      // mapping a defunct account uses the canonical account's real name).
+      const member = memberById.get(ownerId) ?? memberById.get(rawOwnerId);
+      const name = ownerName(member, ownerId);
       ensureManager(ownerId, name, year, tn);
     }
 

@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'node:path';
 
@@ -8,26 +8,40 @@ const VIEWS = ['mTeam', 'mSettings', 'mMatchup', 'mMatchupScore', 'mRoster', 'mS
   .map((v) => `view=${v}`)
   .join('&');
 
-export default defineConfig({
-  plugins: [react()],
-  resolve: {
-    alias: { '@': path.resolve(__dirname, './src') },
-  },
-  server: {
-    port: 5173,
-    proxy: {
-      // Rewrite /api/espn/:year → ESPN's public read endpoint so dev doesn't
-      // need `vercel dev` running. In prod, the same path is handled by
-      // api/espn/[year].ts.
-      '^/api/espn/[0-9]+$': {
-        target: ESPN_HOST,
-        changeOrigin: true,
-        secure: true,
-        rewrite: (url) => {
-          const year = url.split('/').pop();
-          return `/apis/v3/games/ffl/seasons/${year}/segments/0/leagues/${LEAGUE_ID}?${VIEWS}`;
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '');
+  const swid = env.ESPN_SWID;
+  const s2 = env.ESPN_S2;
+  const cookie = swid && s2 ? `SWID=${swid}; espn_s2=${s2}` : null;
+
+  return {
+    plugins: [react()],
+    resolve: {
+      alias: { '@': path.resolve(__dirname, './src') },
+    },
+    server: {
+      port: 5173,
+      proxy: {
+        // Rewrite /api/espn/:year → ESPN's public read endpoint so dev doesn't
+        // need `vercel dev` running. In prod, the same path is handled by
+        // api/espn/[year].ts. If ESPN_SWID + ESPN_S2 are in .env.local we
+        // also attach them as cookies so private/locked seasons work.
+        '^/api/espn/[0-9]+$': {
+          target: ESPN_HOST,
+          changeOrigin: true,
+          secure: true,
+          configure: (proxy) => {
+            if (!cookie) return;
+            proxy.on('proxyReq', (proxyReq) => {
+              proxyReq.setHeader('Cookie', cookie);
+            });
+          },
+          rewrite: (url) => {
+            const year = url.split('/').pop();
+            return `/apis/v3/games/ffl/seasons/${year}/segments/0/leagues/${LEAGUE_ID}?${VIEWS}`;
+          },
         },
       },
     },
-  },
+  };
 });
