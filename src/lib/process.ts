@@ -1,4 +1,10 @@
-import type { ESPNLeague, ManagerStats, Matchup, ProcessedData } from './types';
+import type {
+  ESPNLeague,
+  ESPNMember,
+  ManagerStats,
+  Matchup,
+  ProcessedData,
+} from './types';
 
 export function teamName(
   team: { name?: string; location?: string; nickname?: string } | undefined,
@@ -13,29 +19,61 @@ export function teamName(
   );
 }
 
+function ownerName(member: ESPNMember | undefined, ownerId: string): string {
+  if (!member) return `Unknown (${ownerId.slice(1, 9)})`;
+  const full = `${member.firstName ?? ''} ${member.lastName ?? ''}`.trim();
+  return full || member.displayName?.trim() || `Unknown (${ownerId.slice(1, 9)})`;
+}
+
+const UNCLAIMED = '__unclaimed__';
+
 export function processAllData(leagueData: Record<number, ESPNLeague>): ProcessedData {
   const matchups: Matchup[] = [];
   const managers: Record<string, ManagerStats> = {};
+  const seasonsSeen = new Map<string, Set<number>>();
 
-  const ensureManager = (name: string): ManagerStats => {
-    if (!managers[name]) {
-      managers[name] = {
+  const ensureManager = (ownerId: string, name: string, year: number, team: string): ManagerStats => {
+    let m = managers[ownerId];
+    if (!m) {
+      m = {
+        ownerId,
         name,
+        teamNames: [],
         wins: 0,
         losses: 0,
         ties: 0,
         totalPts: 0,
         weekCount: 0,
         seasons: 0,
+        seasonsActive: [],
         championships: 0,
         playoffApps: 0,
         bestFinish: 999,
         seasonWins: {},
         seasonLoss: {},
         seasonPts: {},
+        seasonTeamName: {},
       };
+      managers[ownerId] = m;
+      seasonsSeen.set(ownerId, new Set());
+    } else if (name && !m.name.startsWith('Unknown')) {
+      // Keep the existing real name; otherwise upgrade from a placeholder.
+    } else if (name) {
+      m.name = name;
     }
-    return managers[name];
+    const yrs = seasonsSeen.get(ownerId)!;
+    if (!yrs.has(year)) {
+      yrs.add(year);
+      m.seasons++;
+      m.seasonsActive.push(year);
+      m.seasonsActive.sort((a, b) => b - a);
+    }
+    m.seasonTeamName[year] = team;
+    if (!m.teamNames.includes(team)) m.teamNames.unshift(team);
+    if (m.seasonWins[year] === undefined) m.seasonWins[year] = 0;
+    if (m.seasonLoss[year] === undefined) m.seasonLoss[year] = 0;
+    if (m.seasonPts[year] === undefined) m.seasonPts[year] = 0;
+    return m;
   };
 
   for (const yearStr of Object.keys(leagueData)) {
@@ -43,20 +81,25 @@ export function processAllData(leagueData: Record<number, ESPNLeague>): Processe
     const data = leagueData[year];
     if (!data) continue;
     const teams = data.teams ?? [];
+    const members = data.members ?? [];
     const schedule = data.schedule ?? [];
     const sched = data.settings?.scheduleSettings ?? {};
     const numPlayoffTeams = sched.playoffTeamCount ?? 4;
     const regularSeasonWeeks = sched.matchupPeriodCount ?? 13;
 
-    const nameById = new Map<number, string>();
+    const memberById = new Map<string, ESPNMember>();
+    for (const m of members) memberById.set(m.id, m);
+
+    // teamId → { ownerId, teamName } for this season
+    const ownerByTeamId = new Map<number, string>();
+    const teamNameByTeamId = new Map<number, string>();
     for (const t of teams) {
-      const nm = teamName(t, t.id);
-      nameById.set(t.id, nm);
-      const m = ensureManager(nm);
-      m.seasons++;
-      m.seasonWins[year] = 0;
-      m.seasonLoss[year] = 0;
-      m.seasonPts[year] = 0;
+      const tn = teamName(t, t.id);
+      teamNameByTeamId.set(t.id, tn);
+      const ownerId = t.owners?.[0] ?? `${UNCLAIMED}-${year}-${t.id}`;
+      ownerByTeamId.set(t.id, ownerId);
+      const name = ownerName(memberById.get(ownerId), ownerId);
+      ensureManager(ownerId, name, year, tn);
     }
 
     for (const game of schedule) {
@@ -68,21 +111,28 @@ export function processAllData(leagueData: Record<number, ESPNLeague>): Processe
       const awayScore = away.totalPoints;
       if (homeScore === 0 && awayScore === 0) continue;
 
-      const homeName = nameById.get(home.teamId) ?? `Team ${home.teamId}`;
-      const awayName = nameById.get(away.teamId) ?? `Team ${away.teamId}`;
+      const homeOwner = ownerByTeamId.get(home.teamId) ?? `${UNCLAIMED}-${year}-${home.teamId}`;
+      const awayOwner = ownerByTeamId.get(away.teamId) ?? `${UNCLAIMED}-${year}-${away.teamId}`;
+      const homeTeam = teamNameByTeamId.get(home.teamId) ?? `Team ${home.teamId}`;
+      const awayTeam = teamNameByTeamId.get(away.teamId) ?? `Team ${away.teamId}`;
       const week = game.matchupPeriodId;
       const isPlayoff = week > regularSeasonWeeks;
       const margin = Math.abs(homeScore - awayScore);
+      const homeWon = homeScore > awayScore;
 
       matchups.push({
         season: year,
         week,
-        homeTeam: homeName,
+        homeOwner,
+        homeTeam,
         homeScore,
-        awayTeam: awayName,
+        awayOwner,
+        awayTeam,
         awayScore,
-        winner: homeScore > awayScore ? homeName : awayName,
-        loser: homeScore > awayScore ? awayName : homeName,
+        winnerOwner: homeWon ? homeOwner : awayOwner,
+        winnerTeam: homeWon ? homeTeam : awayTeam,
+        loserOwner: homeWon ? awayOwner : homeOwner,
+        loserTeam: homeWon ? awayTeam : homeTeam,
         winnerScore: Math.max(homeScore, awayScore),
         loserScore: Math.min(homeScore, awayScore),
         margin: parseFloat(margin.toFixed(2)),
@@ -90,37 +140,37 @@ export function processAllData(leagueData: Record<number, ESPNLeague>): Processe
         isChampionship: false,
       });
 
-      for (const nm of [homeName, awayName]) {
-        const m = managers[nm];
+      for (const ownerId of [homeOwner, awayOwner]) {
+        const m = managers[ownerId];
         if (!m) continue;
-        const scored = nm === homeName ? homeScore : awayScore;
-        const opp = nm === homeName ? awayScore : homeScore;
+        const scored = ownerId === homeOwner ? homeScore : awayScore;
+        const opp = ownerId === homeOwner ? awayScore : homeScore;
         m.totalPts += scored;
         m.weekCount++;
         if (!isPlayoff) {
           if (scored > opp) {
             m.wins++;
-            m.seasonWins[year] = (m.seasonWins[year] ?? 0) + 1;
+            m.seasonWins[year]++;
           } else if (scored < opp) {
             m.losses++;
-            m.seasonLoss[year] = (m.seasonLoss[year] ?? 0) + 1;
+            m.seasonLoss[year]++;
           } else {
             m.ties++;
           }
-          m.seasonPts[year] = (m.seasonPts[year] ?? 0) + scored;
+          m.seasonPts[year] += scored;
         }
       }
     }
 
     const standings = teams
       .map((t) => ({
-        name: teamName(t, t.id),
+        ownerId: ownerByTeamId.get(t.id) ?? `${UNCLAIMED}-${year}-${t.id}`,
         seed: t.rankCalculatedFinal ?? 99,
       }))
       .sort((a, b) => a.seed - b.seed);
 
     standings.forEach((t, i) => {
-      const m = managers[t.name];
+      const m = managers[t.ownerId];
       if (!m) return;
       if (i < numPlayoffTeams) m.playoffApps++;
       const finish = i + 1;

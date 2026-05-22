@@ -40,10 +40,12 @@ export default function Matchups({ leagueData, processed }: Props) {
   let filtered = [...valid];
   if (season !== 'all') filtered = filtered.filter((m) => m.season === Number(season));
   if (manager !== 'all')
-    filtered = filtered.filter((m) => m.homeTeam === manager || m.awayTeam === manager);
+    filtered = filtered.filter((m) => m.homeOwner === manager || m.awayOwner === manager);
   filtered.sort((a, b) => b.season - a.season || b.week - a.week);
 
-  const managers = Object.keys(processed.managers).sort();
+  const managerOptions = Object.values(processed.managers).sort((a, b) =>
+    a.name.localeCompare(b.name),
+  );
 
   return (
     <>
@@ -53,14 +55,14 @@ export default function Matchups({ leagueData, processed }: Props) {
           <div className="label">Biggest Blowout</div>
           <div className="val">+{bigBlowout.margin}</div>
           <div className="sub">
-            {bigBlowout.winner} · {bigBlowout.season} Wk{bigBlowout.week}
+            {processed.managers[bigBlowout.winnerOwner]?.name ?? bigBlowout.winnerTeam} · {bigBlowout.season} Wk{bigBlowout.week}
           </div>
         </div>
         <div className="stat-card">
           <div className="label">Closest Game</div>
           <div className="val">+{closest.margin}</div>
           <div className="sub">
-            {closest.winner} · {closest.season} Wk{closest.week}
+            {processed.managers[closest.winnerOwner]?.name ?? closest.winnerTeam} · {closest.season} Wk{closest.week}
           </div>
         </div>
         <div className="stat-card">
@@ -69,9 +71,14 @@ export default function Matchups({ leagueData, processed }: Props) {
           <div className="sub">
             {highScore.m
               ? `${
-                  highScore.m.homeScore >= highScore.m.awayScore
+                  processed.managers[
+                    highScore.m.homeScore >= highScore.m.awayScore
+                      ? highScore.m.homeOwner
+                      : highScore.m.awayOwner
+                  ]?.name ??
+                  (highScore.m.homeScore >= highScore.m.awayScore
                     ? highScore.m.homeTeam
-                    : highScore.m.awayTeam
+                    : highScore.m.awayTeam)
                 } · ${highScore.m.season}`
               : ''}
           </div>
@@ -94,9 +101,9 @@ export default function Matchups({ leagueData, processed }: Props) {
         </select>
         <select value={manager} onChange={(e) => setManager(e.target.value)}>
           <option value="all">All Managers</option>
-          {managers.map((m) => (
-            <option key={m} value={m}>
-              {m}
+          {managerOptions.map((m) => (
+            <option key={m.ownerId} value={m.ownerId}>
+              {m.name}
             </option>
           ))}
         </select>
@@ -117,14 +124,17 @@ export default function Matchups({ leagueData, processed }: Props) {
             </tr>
           </thead>
           <tbody>
-            {filtered.slice(0, 100).map((m, i) => (
+            {filtered.slice(0, 100).map((m, i) => {
+              const wn = processed.managers[m.winnerOwner]?.name ?? m.winnerTeam;
+              const ln = processed.managers[m.loserOwner]?.name ?? m.loserTeam;
+              return (
               <tr key={i}>
                 <td>{m.season}</td>
                 <td>Wk{m.week}</td>
-                <td className="positive">{m.winner}</td>
+                <td className="positive" title={m.winnerTeam}>{wn}</td>
                 <td className="mono positive">{m.winnerScore.toFixed(2)}</td>
                 <td className="mono negative">{m.loserScore.toFixed(2)}</td>
-                <td className="negative">{m.loser}</td>
+                <td className="negative" title={m.loserTeam}>{ln}</td>
                 <td className="mono">+{m.margin}</td>
                 <td>
                   <span className={`badge ${m.isPlayoff ? 'badge-blue' : 'badge-dim'}`}>
@@ -132,7 +142,8 @@ export default function Matchups({ leagueData, processed }: Props) {
                   </span>
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>

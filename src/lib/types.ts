@@ -60,10 +60,18 @@ export interface ESPNMatchup {
   winner?: 'HOME' | 'AWAY' | 'TIE' | 'UNDECIDED';
 }
 
+export interface ESPNMember {
+  id: string; // SWID-style GUID, e.g. "{ABCD-1234-...}"
+  firstName?: string;
+  lastName?: string;
+  displayName?: string;
+}
+
 export interface ESPNLeague {
   id: number;
   seasonId: number;
   teams?: ESPNTeam[];
+  members?: ESPNMember[];
   schedule?: ESPNMatchup[];
   settings?: {
     name?: string;
@@ -75,16 +83,24 @@ export interface ESPNLeague {
   };
 }
 
-// Normalized shapes used throughout the app
+// Normalized shapes used throughout the app.
+// Owner identity (a stable SWID GUID) is the primary key for aggregating
+// stats. Team names change every season and even owners can be replaced,
+// so we keep team names only for per-game display and key everything else
+// off the owner GUID.
 export interface Matchup {
   season: number;
   week: number;
+  homeOwner: string;
   homeTeam: string;
   homeScore: number;
+  awayOwner: string;
   awayTeam: string;
   awayScore: number;
-  winner: string;
-  loser: string;
+  winnerOwner: string;
+  winnerTeam: string;
+  loserOwner: string;
+  loserTeam: string;
   winnerScore: number;
   loserScore: number;
   margin: number;
@@ -93,22 +109,26 @@ export interface Matchup {
 }
 
 export interface ManagerStats {
-  name: string;
+  ownerId: string;       // stable SWID GUID
+  name: string;          // owner's real name (or fallback)
+  teamNames: string[];   // every team name they've used, most recent first
   wins: number;
   losses: number;
   ties: number;
   totalPts: number;
   weekCount: number;
-  seasons: number;
+  seasons: number;       // distinct seasons they appeared in
+  seasonsActive: number[];
   championships: number;
   playoffApps: number;
   bestFinish: number;
   seasonWins: Record<number, number>;
   seasonLoss: Record<number, number>;
   seasonPts: Record<number, number>;
+  seasonTeamName: Record<number, string>; // year -> team name that season
 }
 
 export interface ProcessedData {
   matchups: Matchup[];
-  managers: Record<string, ManagerStats>;
+  managers: Record<string, ManagerStats>; // keyed by ownerId
 }

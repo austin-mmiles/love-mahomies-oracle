@@ -33,7 +33,8 @@ export default function Seasons({ leagueData, processed }: Props) {
   );
   const biggestBlowout = seasonMatchups.reduce<{
     margin: number;
-    winner?: string;
+    winnerOwner?: string;
+    winnerTeam?: string;
     week?: number;
   }>((b, m) => (m.margin > b.margin ? m : b), { margin: 0 });
 
@@ -89,8 +90,8 @@ export default function Seasons({ leagueData, processed }: Props) {
           label="Biggest Blowout"
           val={`+${biggestBlowout.margin}`}
           sub={
-            biggestBlowout.winner
-              ? `${biggestBlowout.winner} · Wk ${biggestBlowout.week}`
+            biggestBlowout.winnerOwner
+              ? `${processed.managers[biggestBlowout.winnerOwner]?.name ?? biggestBlowout.winnerTeam} · Wk ${biggestBlowout.week}`
               : '—'
           }
         />
@@ -145,16 +146,20 @@ export default function Seasons({ leagueData, processed }: Props) {
               </tr>
             </thead>
             <tbody>
-              {playoffMatchups.map((m, i) => (
+              {playoffMatchups.map((m, i) => {
+                const wn = processed.managers[m.winnerOwner]?.name ?? m.winnerTeam;
+                const ln = processed.managers[m.loserOwner]?.name ?? m.loserTeam;
+                return (
                 <tr key={i}>
                   <td>Wk {m.week}</td>
-                  <td className="positive">{m.winner}</td>
+                  <td className="positive" title={m.winnerTeam}>{wn}</td>
                   <td className="mono positive">{m.winnerScore.toFixed(2)}</td>
                   <td className="mono negative">{m.loserScore.toFixed(2)}</td>
-                  <td className="negative">{m.loser}</td>
+                  <td className="negative" title={m.loserTeam}>{ln}</td>
                   <td className="mono">+{m.margin}</td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>

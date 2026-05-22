@@ -1,16 +1,16 @@
 import { useMemo, useState } from 'react';
 import { SEASONS } from '../lib/espn';
-import { teamName } from '../lib/process';
-import type { ESPNLeague } from '../lib/types';
+import type { ESPNLeague, ProcessedData } from '../lib/types';
 
 interface Props {
   leagueData: Record<number, ESPNLeague>;
+  processed: ProcessedData;
 }
 
 interface WeeklyPerf {
   playerId: number;
   player: string;
-  manager: string;
+  ownerId: string;
   season: number;
   week: number;
   points: number;
@@ -25,14 +25,14 @@ function extractPerformances(leagueData: Record<number, ESPNLeague>): WeeklyPerf
     const year = Number(yearStr);
     const data = leagueData[year];
     const teams = data?.teams ?? [];
-    const nameById = new Map<number, string>();
-    for (const t of teams) nameById.set(t.id, teamName(t, t.id));
+    const ownerByTeam = new Map<number, string>();
+    for (const t of teams) ownerByTeam.set(t.id, t.owners?.[0] ?? `__unclaimed-${year}-${t.id}`);
 
     for (const game of data?.schedule ?? []) {
       const week = game.matchupPeriodId;
       for (const side of [game.home, game.away]) {
         if (!side) continue;
-        const mgr = nameById.get(side.teamId) ?? `Team ${side.teamId}`;
+        const ownerId = ownerByTeam.get(side.teamId) ?? `__unclaimed-${year}-${side.teamId}`;
         const entries = side.rosterForCurrentScoringPeriod?.entries ?? [];
         for (const e of entries) {
           const player = e.playerPoolEntry?.player;
@@ -45,7 +45,7 @@ function extractPerformances(leagueData: Record<number, ESPNLeague>): WeeklyPerf
           perfs.push({
             playerId: player.id,
             player: player.fullName ?? `Player ${player.id}`,
-            manager: mgr,
+            ownerId,
             season: year,
             week,
             points: stat.appliedTotal,
@@ -58,11 +58,12 @@ function extractPerformances(leagueData: Record<number, ESPNLeague>): WeeklyPerf
   return perfs;
 }
 
-export default function Players({ leagueData }: Props) {
+export default function Players({ leagueData, processed }: Props) {
   const [season, setSeason] = useState<string>('all');
   const [onlyStarters, setOnlyStarters] = useState(true);
 
   const perfs = useMemo(() => extractPerformances(leagueData), [leagueData]);
+  const ownerName = (ownerId: string) => processed.managers[ownerId]?.name ?? 'Unknown';
 
   if (perfs.length === 0) {
     return (
@@ -84,7 +85,7 @@ export default function Players({ leagueData }: Props) {
   const topWeekly = [...filtered].sort((a, b) => b.points - a.points).slice(0, 25);
 
   // Aggregate per-player season totals
-  const seasonTotals = new Map<string, { player: string; manager: string; season: number; total: number; weeks: number }>();
+  const seasonTotals = new Map<string, { player: string; ownerId: string; season: number; total: number; weeks: number }>();
   for (const p of filtered) {
     const key = `${p.playerId}|${p.season}`;
     const cur = seasonTotals.get(key);
@@ -92,19 +93,19 @@ export default function Players({ leagueData }: Props) {
       cur.total += p.points;
       cur.weeks++;
     } else {
-      seasonTotals.set(key, { player: p.player, manager: p.manager, season: p.season, total: p.points, weeks: 1 });
+      seasonTotals.set(key, { player: p.player, ownerId: p.ownerId, season: p.season, total: p.points, weeks: 1 });
     }
   }
   const topSeason = [...seasonTotals.values()].sort((a, b) => b.total - a.total).slice(0, 25);
 
-  // Manager → unique player-seasons rostered (a rough "talent acquired" stat)
+  // Manager (owner) → unique player-seasons rostered
   const mgrPlayers = new Map<string, Set<string>>();
   for (const p of filtered) {
-    if (!mgrPlayers.has(p.manager)) mgrPlayers.set(p.manager, new Set());
-    mgrPlayers.get(p.manager)!.add(`${p.playerId}|${p.season}`);
+    if (!mgrPlayers.has(p.ownerId)) mgrPlayers.set(p.ownerId, new Set());
+    mgrPlayers.get(p.ownerId)!.add(`${p.playerId}|${p.season}`);
   }
   const mgrSummary = [...mgrPlayers.entries()]
-    .map(([manager, set]) => ({ manager, uniquePlayers: set.size }))
+    .map(([ownerId, set]) => ({ ownerId, uniquePlayers: set.size }))
     .sort((a, b) => b.uniquePlayers - a.uniquePlayers);
 
   return (
@@ -148,7 +149,7 @@ export default function Players({ leagueData }: Props) {
               <tr key={i}>
                 <td className="rank">#{i + 1}</td>
                 <td><strong>{p.player}</strong></td>
-                <td>{p.manager}</td>
+                <td>{ownerName(p.ownerId)}</td>
                 <td>{p.season}</td>
                 <td>Wk {p.week}</td>
                 <td className="mono positive">{p.points.toFixed(2)}</td>
@@ -182,7 +183,7 @@ export default function Players({ leagueData }: Props) {
               <tr key={i}>
                 <td className="rank">#{i + 1}</td>
                 <td><strong>{p.player}</strong></td>
-                <td>{p.manager}</td>
+                <td>{ownerName(p.ownerId)}</td>
                 <td>{p.season}</td>
                 <td className="mono">{p.weeks}</td>
                 <td className="mono positive">{p.total.toFixed(1)}</td>
@@ -207,8 +208,8 @@ export default function Players({ leagueData }: Props) {
           </thead>
           <tbody>
             {mgrSummary.map((m) => (
-              <tr key={m.manager}>
-                <td><strong>{m.manager}</strong></td>
+              <tr key={m.ownerId}>
+                <td><strong>{ownerName(m.ownerId)}</strong></td>
                 <td className="mono">{m.uniquePlayers}</td>
               </tr>
             ))}

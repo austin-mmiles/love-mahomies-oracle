@@ -98,11 +98,16 @@ export default function Overview({ leagueData, processed }: Props) {
           )[0];
           if (!champ) return null;
           const r = champ.record?.overall ?? {};
+          const ownerId = champ.owners?.[0];
+          const owner = ownerId ? processed.managers[ownerId] : undefined;
           return (
             <div key={y} className="trophy-card">
               <div className="trophy-year">{y}</div>
               <div style={{ fontSize: '1.2rem' }}>🏆</div>
-              <div className="trophy-name">{teamName(champ, champ.id)}</div>
+              <div className="trophy-name">{owner?.name ?? teamName(champ, champ.id)}</div>
+              <div className="trophy-record" style={{ fontStyle: 'italic' }}>
+                {teamName(champ, champ.id)}
+              </div>
               <div className="trophy-record">
                 {r.wins ?? 0}-{r.losses ?? 0}
                 {r.ties ? `-${r.ties}` : ''}
@@ -133,10 +138,16 @@ export default function Overview({ leagueData, processed }: Props) {
               const avg = m.weekCount ? (m.totalPts / m.weekCount).toFixed(1) : '—';
               const bf = m.bestFinish === 999 ? '—' : ordinal(m.bestFinish);
               return (
-                <tr key={m.name}>
+                <tr key={m.ownerId}>
                   <td className="rank">#{i + 1}</td>
                   <td>
                     <strong>{m.name}</strong>
+                    {m.teamNames.length > 0 && (
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-dimmer)', marginTop: 2 }}>
+                        {m.teamNames.slice(0, 2).join(' · ')}
+                        {m.teamNames.length > 2 ? ` · +${m.teamNames.length - 2} more` : ''}
+                      </div>
+                    )}
                   </td>
                   <td>
                     {m.championships ? (

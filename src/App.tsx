@@ -102,7 +102,7 @@ export default function App() {
         {tab === 'standings' && <Standings leagueData={leagueData} processed={processed} />}
         {tab === 'matchups' && <Matchups leagueData={leagueData} processed={processed} />}
         {tab === 'h2h' && <H2H processed={processed} />}
-        {tab === 'players' && <Players leagueData={leagueData} />}
+        {tab === 'players' && <Players leagueData={leagueData} processed={processed} />}
         {tab === 'chat' && <Chat leagueData={leagueData} processed={processed} />}
       </div>
     </>

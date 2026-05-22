@@ -11,10 +11,16 @@ interface Cell {
   oppPts: number;
 }
 
-const shortName = (nm: string) => nm.split(' ').pop() || nm;
+const lastName = (nm: string) => nm.split(' ').pop() || nm;
 
 export default function H2H({ processed }: Props) {
-  const managers = Object.keys(processed.managers).sort();
+  const managerList = Object.values(processed.managers).sort((a, b) =>
+    a.name.localeCompare(b.name),
+  );
+  const managers = managerList.map((m) => m.ownerId);
+  const nameOf = (ownerId: string) => processed.managers[ownerId]?.name ?? '?';
+  const shortOf = (ownerId: string) => lastName(nameOf(ownerId));
+
   const h2h: Record<string, Record<string, Cell>> = {};
   for (const a of managers) {
     h2h[a] = {};
@@ -23,18 +29,18 @@ export default function H2H({ processed }: Props) {
 
   for (const m of processed.matchups) {
     if (m.homeScore <= 0 || m.awayScore <= 0) continue;
-    if (!h2h[m.homeTeam]?.[m.awayTeam]) continue;
+    if (!h2h[m.homeOwner]?.[m.awayOwner]) continue;
     if (m.homeScore > m.awayScore) {
-      h2h[m.homeTeam][m.awayTeam].w++;
-      h2h[m.awayTeam][m.homeTeam].l++;
+      h2h[m.homeOwner][m.awayOwner].w++;
+      h2h[m.awayOwner][m.homeOwner].l++;
     } else {
-      h2h[m.homeTeam][m.awayTeam].l++;
-      h2h[m.awayTeam][m.homeTeam].w++;
+      h2h[m.homeOwner][m.awayOwner].l++;
+      h2h[m.awayOwner][m.homeOwner].w++;
     }
-    h2h[m.homeTeam][m.awayTeam].pts += m.homeScore;
-    h2h[m.homeTeam][m.awayTeam].oppPts += m.awayScore;
-    h2h[m.awayTeam][m.homeTeam].pts += m.awayScore;
-    h2h[m.awayTeam][m.homeTeam].oppPts += m.homeScore;
+    h2h[m.homeOwner][m.awayOwner].pts += m.homeScore;
+    h2h[m.homeOwner][m.awayOwner].oppPts += m.awayScore;
+    h2h[m.awayOwner][m.homeOwner].pts += m.awayScore;
+    h2h[m.awayOwner][m.homeOwner].oppPts += m.homeScore;
   }
 
   const rivalries: {
@@ -72,7 +78,7 @@ export default function H2H({ processed }: Props) {
             <tr>
               <th>vs →</th>
               {managers.map((m) => (
-                <th key={m}>{shortName(m)}</th>
+                <th key={m}>{shortOf(m)}</th>
               ))}
               <th>Total</th>
             </tr>
@@ -108,7 +114,7 @@ export default function H2H({ processed }: Props) {
               return (
                 <tr key={a}>
                   <td>
-                    <strong>{shortName(a)}</strong>
+                    <strong>{shortOf(a)}</strong>
                   </td>
                   {cells}
                   <td>
@@ -139,8 +145,8 @@ export default function H2H({ processed }: Props) {
             {rivalries.slice(0, 15).map((r, i) => (
               <tr key={i}>
                 <td>
-                  <strong>{shortName(r.a)}</strong> vs{' '}
-                  <strong>{shortName(r.b)}</strong>
+                  <strong>{shortOf(r.a)}</strong> vs{' '}
+                  <strong>{shortOf(r.b)}</strong>
                 </td>
                 <td className="mono">{r.total}</td>
                 <td className="mono">
@@ -151,7 +157,7 @@ export default function H2H({ processed }: Props) {
                   {r.dominant === 'Tied' ? (
                     <span className="badge badge-dim">Tied</span>
                   ) : (
-                    <span className="badge badge-gold">{shortName(r.dominant)}</span>
+                    <span className="badge badge-gold">{shortOf(r.dominant)}</span>
                   )}
                 </td>
               </tr>

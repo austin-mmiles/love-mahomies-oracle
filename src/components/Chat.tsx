@@ -28,13 +28,18 @@ function buildSystemPrompt(leagueData: Record<number, ESPNLeague>, processed: Pr
   const managers = Object.values(processed.managers);
   const avail = SEASONS.filter((y) => leagueData[y]);
 
+  const ownerName = (ownerId: string) => processed.managers[ownerId]?.name ?? 'Unknown';
+
   const champByYear = avail
     .map((y) => {
       const teams = leagueData[y]?.teams ?? [];
       const c = [...teams].sort(
         (a, b) => (a.rankCalculatedFinal ?? 99) - (b.rankCalculatedFinal ?? 99),
       )[0];
-      return c ? `${y}: ${teamName(c, c.id)}` : null;
+      if (!c) return null;
+      const owner = c.owners?.[0];
+      const nm = owner ? ownerName(owner) : teamName(c, c.id);
+      return `${y}: ${nm} (team: ${teamName(c, c.id)})`;
     })
     .filter(Boolean)
     .join(', ');
@@ -44,11 +49,11 @@ function buildSystemPrompt(leagueData: Record<number, ESPNLeague>, processed: Pr
       const ms = processed.matchups.filter((m) => m.season === y && !m.isPlayoff);
       const scores: Record<string, number> = {};
       for (const m of ms) {
-        scores[m.homeTeam] = (scores[m.homeTeam] ?? 0) + m.homeScore;
-        scores[m.awayTeam] = (scores[m.awayTeam] ?? 0) + m.awayScore;
+        scores[m.homeOwner] = (scores[m.homeOwner] ?? 0) + m.homeScore;
+        scores[m.awayOwner] = (scores[m.awayOwner] ?? 0) + m.awayScore;
       }
       const top = Object.entries(scores).sort((a, b) => b[1] - a[1])[0];
-      return top ? `${y}: ${top[0]} (${top[1].toFixed(1)} total)` : null;
+      return top ? `${y}: ${ownerName(top[0])} (${top[1].toFixed(1)} total)` : null;
     })
     .filter(Boolean)
     .join('; ');
@@ -59,7 +64,8 @@ function buildSystemPrompt(leagueData: Record<number, ESPNLeague>, processed: Pr
   const managerSummary = sorted
     .map((m) => {
       const avg = m.weekCount ? (m.totalPts / m.weekCount).toFixed(1) : '?';
-      return `${m.name}: ${m.wins}W-${m.losses}L (${pct(m.wins, m.losses, m.ties)} win rate), avg ${avg} pts/wk, ${m.championships} titles, ${m.playoffApps} playoff apps`;
+      const teams = m.teamNames.length ? ` [teams used: ${m.teamNames.join(', ')}]` : '';
+      return `${m.name}: ${m.wins}W-${m.losses}L (${pct(m.wins, m.losses, m.ties)} win rate), avg ${avg} pts/wk, ${m.championships} titles, ${m.playoffApps} playoff apps, ${m.seasons} seasons${teams}`;
     })
     .join('\n');
 
@@ -73,6 +79,8 @@ function buildSystemPrompt(leagueData: Record<number, ESPNLeague>, processed: Pr
     },
     { s: 0, m: processed.matchups[0] },
   );
+  const hiOwner =
+    highScore.m.homeScore >= highScore.m.awayScore ? highScore.m.homeOwner : highScore.m.awayOwner;
 
   return `You are Gridiron Oracle, an expert fantasy football analyst for a private ESPN fantasy league (ID: 97124817).
 
@@ -81,15 +89,15 @@ Seasons available: ${avail.join(', ')}
 
 CHAMPIONS BY YEAR: ${champByYear}
 
-ALL-TIME MANAGER STATS:
+ALL-TIME MANAGER STATS (keyed by owner identity — team names change year to year):
 ${managerSummary}
 
 TOP SCORERS BY SEASON: ${topScorers}
 
 RECORD BOOK:
-- Biggest blowout: ${bigBlowout.winner} beat ${bigBlowout.loser} by ${bigBlowout.margin} pts (${bigBlowout.season} Week ${bigBlowout.week})
-- Closest game: ${closest.winner} edged ${closest.loser} by ${closest.margin} pts (${closest.season} Week ${closest.week})
-- Highest single score: ${highScore.s.toFixed(2)} pts (${highScore.m.season} Week ${highScore.m.week})
+- Biggest blowout: ${ownerName(bigBlowout.winnerOwner)} beat ${ownerName(bigBlowout.loserOwner)} by ${bigBlowout.margin} pts (${bigBlowout.season} Week ${bigBlowout.week})
+- Closest game: ${ownerName(closest.winnerOwner)} edged ${ownerName(closest.loserOwner)} by ${closest.margin} pts (${closest.season} Week ${closest.week})
+- Highest single score: ${highScore.s.toFixed(2)} pts by ${ownerName(hiOwner)} (${highScore.m.season} Week ${highScore.m.week})
 
 Answer questions with insight and personality. Use specific stats. Be like a sports analyst — opinionated, data-driven, entertaining. Keep answers concise (under 150 words) unless the user asks for detail. Use bold for names/numbers.`;
 }
