@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
-import { SEASONS, loadAllSeasons } from './lib/espn';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { loadAllSeasons } from './lib/espn';
 import { processAllData } from './lib/process';
+import { NavContext, type TabId, type View } from './lib/nav';
 import type { ESPNLeague, ProcessedData } from './lib/types';
 import Overview from './components/Overview';
 import Seasons from './components/Seasons';
@@ -9,8 +10,7 @@ import Matchups from './components/Matchups';
 import H2H from './components/H2H';
 import Players from './components/Players';
 import Chat from './components/Chat';
-
-type TabId = 'overview' | 'seasons' | 'standings' | 'matchups' | 'h2h' | 'players' | 'chat';
+import ManagerDetail from './components/ManagerDetail';
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'overview', label: 'Overview' },
@@ -27,7 +27,12 @@ export default function App() {
   const [loadStatus, setLoadStatus] = useState('Initializing...');
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<TabId>('overview');
+  const [view, setView] = useState<View>({ kind: 'tab', id: 'overview' });
+
+  const goTo = useCallback((v: View) => {
+    setView(v);
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -56,7 +61,7 @@ export default function App() {
   if (!leagueData || !processed) {
     return (
       <div id="load-screen">
-        <div className="load-title">⚡ Gridiron Oracle</div>
+        <div className="load-title">⚡ Love Mahomies Oracle</div>
         <div className="load-sub">Fetching league data from ESPN · 2020–2025</div>
         <div className="progress-bar">
           <div className="progress-fill" style={{ width: `${progress}%` }} />
@@ -74,11 +79,13 @@ export default function App() {
     );
   }
 
+  const activeTab = view.kind === 'tab' ? view.id : null;
+
   return (
-    <>
+    <NavContext.Provider value={{ view, goTo }}>
       <header className="header">
         <div className="logo">
-          ⚡ Gridiron Oracle
+          ⚡ Love Mahomies Oracle
           <span>
             <span className="status-dot done" />
             League #97124817 · Live Data
@@ -88,8 +95,8 @@ export default function App() {
           {TABS.map((t) => (
             <button
               key={t.id}
-              className={tab === t.id ? 'active' : ''}
-              onClick={() => setTab(t.id)}
+              className={activeTab === t.id ? 'active' : ''}
+              onClick={() => goTo({ kind: 'tab', id: t.id })}
             >
               {t.label}
             </button>
@@ -97,14 +104,17 @@ export default function App() {
         </nav>
       </header>
       <div className="panel">
-        {tab === 'overview' && <Overview leagueData={leagueData} processed={processed} />}
-        {tab === 'seasons' && <Seasons leagueData={leagueData} processed={processed} />}
-        {tab === 'standings' && <Standings leagueData={leagueData} processed={processed} />}
-        {tab === 'matchups' && <Matchups leagueData={leagueData} processed={processed} />}
-        {tab === 'h2h' && <H2H processed={processed} />}
-        {tab === 'players' && <Players leagueData={leagueData} processed={processed} />}
-        {tab === 'chat' && <Chat leagueData={leagueData} processed={processed} />}
+        {view.kind === 'manager' && (
+          <ManagerDetail ownerId={view.ownerId} leagueData={leagueData} processed={processed} />
+        )}
+        {activeTab === 'overview' && <Overview leagueData={leagueData} processed={processed} />}
+        {activeTab === 'seasons' && <Seasons leagueData={leagueData} processed={processed} />}
+        {activeTab === 'standings' && <Standings leagueData={leagueData} processed={processed} />}
+        {activeTab === 'matchups' && <Matchups leagueData={leagueData} processed={processed} />}
+        {activeTab === 'h2h' && <H2H processed={processed} />}
+        {activeTab === 'players' && <Players leagueData={leagueData} processed={processed} />}
+        {activeTab === 'chat' && <Chat leagueData={leagueData} processed={processed} />}
       </div>
-    </>
+    </NavContext.Provider>
   );
 }

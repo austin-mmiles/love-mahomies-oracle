@@ -127,12 +127,23 @@ export function processAllData(leagueData: Record<number, ESPNLeague>): Processe
       const awayScore = away.totalPoints;
       if (homeScore === 0 && awayScore === 0) continue;
 
+      const week = game.matchupPeriodId;
+      const afterRegSeason = week > regularSeasonWeeks;
+      // Skip consolation/loser-bracket games entirely — eliminated teams
+      // shouldn't pad totals. Only winners-bracket playoff games count.
+      const tier = game.playoffTierType ?? 'NONE';
+      const isPlayoff = afterRegSeason && tier === 'WINNERS_BRACKET';
+      const isConsolation = afterRegSeason && tier !== 'WINNERS_BRACKET' && tier !== 'NONE';
+      if (isConsolation) continue;
+      // Older payloads may not tag playoffTierType. Conservative fallback:
+      // any post-regular-season game without a tier label is treated as
+      // playoff (counted). If we see consolation slip through, we'll need
+      // to revisit per-year defaults.
+
       const homeOwner = ownerByTeamId.get(home.teamId) ?? `${UNCLAIMED}-${year}-${home.teamId}`;
       const awayOwner = ownerByTeamId.get(away.teamId) ?? `${UNCLAIMED}-${year}-${away.teamId}`;
       const homeTeam = teamNameByTeamId.get(home.teamId) ?? `Team ${home.teamId}`;
       const awayTeam = teamNameByTeamId.get(away.teamId) ?? `Team ${away.teamId}`;
-      const week = game.matchupPeriodId;
-      const isPlayoff = week > regularSeasonWeeks;
       const margin = Math.abs(homeScore - awayScore);
       const homeWon = homeScore > awayScore;
 

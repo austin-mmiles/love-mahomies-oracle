@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { SEASONS } from '../lib/espn';
 import type { ESPNLeague, Matchup, ProcessedData } from '../lib/types';
+import OwnerLink from './OwnerLink';
 
 interface Props {
   leagueData: Record<number, ESPNLeague>;
@@ -131,10 +132,14 @@ export default function Matchups({ leagueData, processed }: Props) {
               <tr key={i}>
                 <td>{m.season}</td>
                 <td>Wk{m.week}</td>
-                <td className="positive" title={m.winnerTeam}>{wn}</td>
+                <td className="positive" title={m.winnerTeam}>
+                  <OwnerLink ownerId={m.winnerOwner}>{wn}</OwnerLink>
+                </td>
                 <td className="mono positive">{m.winnerScore.toFixed(2)}</td>
                 <td className="mono negative">{m.loserScore.toFixed(2)}</td>
-                <td className="negative" title={m.loserTeam}>{ln}</td>
+                <td className="negative" title={m.loserTeam}>
+                  <OwnerLink ownerId={m.loserOwner}>{ln}</OwnerLink>
+                </td>
                 <td className="mono">+{m.margin}</td>
                 <td>
                   <span className={`badge ${m.isPlayoff ? 'badge-blue' : 'badge-dim'}`}>

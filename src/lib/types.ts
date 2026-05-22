@@ -52,11 +52,23 @@ export interface ESPNMatchupSide {
   rosterForCurrentScoringPeriod?: { entries?: ESPNRosterEntry[] };
 }
 
+// ESPN tags every matchup with a tier. Anything past the regular season
+// that's not WINNERS_BRACKET (e.g. WINNERS_CONSOLATION_LADDER,
+// LOSERS_CONSOLATION_LADDER, THIRD_PLACE_GAME) is a consolation game
+// and shouldn't count toward W/L/points totals.
+export type PlayoffTierType =
+  | 'NONE'
+  | 'WINNERS_BRACKET'
+  | 'WINNERS_CONSOLATION_LADDER'
+  | 'LOSERS_CONSOLATION_LADDER'
+  | 'THIRD_PLACE_GAME'
+  | string;
+
 export interface ESPNMatchup {
   matchupPeriodId: number;
   home?: ESPNMatchupSide;
   away?: ESPNMatchupSide;
-  playoffTierType?: string;
+  playoffTierType?: PlayoffTierType;
   winner?: 'HOME' | 'AWAY' | 'TIE' | 'UNDECIDED';
 }
 

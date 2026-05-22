@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { SEASONS } from '../lib/espn';
 import { pct, teamName } from '../lib/process';
 import type { ESPNLeague, ProcessedData } from '../lib/types';
+import OwnerLink from './OwnerLink';
 
 interface Props {
   leagueData: Record<number, ESPNLeague>;
@@ -20,6 +21,7 @@ export default function Standings({ leagueData, processed }: Props) {
       const r = t.record?.overall ?? {};
       return {
         name: teamName(t, t.id),
+        ownerId: t.owners?.[0] ?? '',
         w: r.wins ?? 0,
         l: r.losses ?? 0,
         ti: r.ties ?? 0,
@@ -74,7 +76,9 @@ export default function Standings({ leagueData, processed }: Props) {
                   {i === 0 ? '🏆 ' : ''}#{i + 1}
                 </td>
                 <td>
-                  <strong>{t.name}</strong>
+                  <strong>
+                    {t.ownerId ? <OwnerLink ownerId={t.ownerId}>{t.name}</OwnerLink> : t.name}
+                  </strong>
                 </td>
                 <td>—</td>
                 <td className="mono positive">{t.w}</td>

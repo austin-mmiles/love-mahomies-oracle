@@ -82,7 +82,7 @@ function buildSystemPrompt(leagueData: Record<number, ESPNLeague>, processed: Pr
   const hiOwner =
     highScore.m.homeScore >= highScore.m.awayScore ? highScore.m.homeOwner : highScore.m.awayOwner;
 
-  return `You are Gridiron Oracle, an expert fantasy football analyst for a private ESPN fantasy league (ID: 97124817).
+  return `You are Love Mahomies Oracle, an expert fantasy football analyst for a private ESPN fantasy league (ID: 97124817).
 
 REAL LEAGUE DATA (fetched live from ESPN API):
 Seasons available: ${avail.join(', ')}
@@ -150,7 +150,7 @@ export default function Chat({ leagueData, processed }: Props) {
     <div className="chat-container">
       <div className="chat-msgs" ref={scrollRef}>
         <div className="msg ai">
-          <strong>⚡ Gridiron Oracle online.</strong> I have full access to your league's real
+          <strong>⚡ Love Mahomies Oracle online.</strong> I have full access to your league's real
           ESPN data from 2020–2025 — every matchup, score, and standing.
           <br />
           <br />

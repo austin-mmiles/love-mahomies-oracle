@@ -3,6 +3,7 @@ import Chart from 'chart.js/auto';
 import { SEASONS } from '../lib/espn';
 import { ordinal, pct, teamName } from '../lib/process';
 import type { ESPNLeague, ProcessedData } from '../lib/types';
+import OwnerLink from './OwnerLink';
 
 interface Props {
   leagueData: Record<number, ESPNLeague>;
@@ -104,7 +105,13 @@ export default function Overview({ leagueData, processed }: Props) {
             <div key={y} className="trophy-card">
               <div className="trophy-year">{y}</div>
               <div style={{ fontSize: '1.2rem' }}>🏆</div>
-              <div className="trophy-name">{owner?.name ?? teamName(champ, champ.id)}</div>
+              <div className="trophy-name">
+                {ownerId ? (
+                  <OwnerLink ownerId={ownerId}>{owner?.name ?? teamName(champ, champ.id)}</OwnerLink>
+                ) : (
+                  teamName(champ, champ.id)
+                )}
+              </div>
               <div className="trophy-record" style={{ fontStyle: 'italic' }}>
                 {teamName(champ, champ.id)}
               </div>
@@ -141,7 +148,7 @@ export default function Overview({ leagueData, processed }: Props) {
                 <tr key={m.ownerId}>
                   <td className="rank">#{i + 1}</td>
                   <td>
-                    <strong>{m.name}</strong>
+                    <strong><OwnerLink ownerId={m.ownerId}>{m.name}</OwnerLink></strong>
                     {m.teamNames.length > 0 && (
                       <div style={{ fontSize: '0.7rem', color: 'var(--text-dimmer)', marginTop: 2 }}>
                         {m.teamNames.slice(0, 2).join(' · ')}

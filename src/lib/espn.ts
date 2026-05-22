@@ -37,6 +37,35 @@ export function clearCache(): void {
   for (const y of SEASONS) localStorage.removeItem(CACHE_PREFIX + y);
 }
 
+const WEEK_CACHE_PREFIX = 'gridiron-oracle:week:';
+
+interface WeekCacheEntry {
+  fetchedAt: number;
+  data: ESPNLeague;
+}
+
+export async function fetchWeek(year: number, week: number): Promise<ESPNLeague> {
+  const key = `${WEEK_CACHE_PREFIX}${year}-${week}`;
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw) {
+      const entry: WeekCacheEntry = JSON.parse(raw);
+      if (Date.now() - entry.fetchedAt < CACHE_TTL_MS) return entry.data;
+    }
+  } catch {
+    // ignore
+  }
+  const res = await fetch(`/api/espn/${year}/week/${week}`);
+  if (!res.ok) throw new Error(`Failed to fetch ${year} wk${week}: HTTP ${res.status}`);
+  const data: ESPNLeague = await res.json();
+  try {
+    localStorage.setItem(key, JSON.stringify({ fetchedAt: Date.now(), data } as WeekCacheEntry));
+  } catch {
+    // ignore quota errors
+  }
+  return data;
+}
+
 export async function fetchSeason(year: number, force = false): Promise<ESPNLeague> {
   if (!force) {
     const cached = readCache(year);

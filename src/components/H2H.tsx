@@ -1,4 +1,5 @@
 import type { ProcessedData } from '../lib/types';
+import OwnerLink from './OwnerLink';
 
 interface Props {
   processed: ProcessedData;
@@ -114,7 +115,7 @@ export default function H2H({ processed }: Props) {
               return (
                 <tr key={a}>
                   <td>
-                    <strong>{shortOf(a)}</strong>
+                    <strong><OwnerLink ownerId={a}>{shortOf(a)}</OwnerLink></strong>
                   </td>
                   {cells}
                   <td>
